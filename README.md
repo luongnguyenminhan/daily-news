@@ -28,6 +28,10 @@ npm run dev:api                   # apps/api, http://localhost:3001
 npm run dev:web                   # apps/web, http://localhost:3000
 ```
 
+## Architecture
+
+See [`docs/architecture.html`](docs/architecture.html) for an interactive diagram of the system (web, API, Postgres, and the RSS/GitHub crawl sources). Open it in a browser.
+
 ## Structure
 
 ```
