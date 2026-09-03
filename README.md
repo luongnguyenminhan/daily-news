@@ -66,7 +66,7 @@ Set `GITHUB_TOKEN` in `.env` to raise the GitHub search rate limit. Read back wh
 ## Summarizing articles
 
 Once articles are crawled, generate an AI summary post (title + body) for
-each one via Google Gemini's Batch API:
+each one via Google Gemini:
 
 ```bash
 curl -X POST http://localhost:3001/summarize
