@@ -33,12 +33,28 @@ function fakeGemini(
 }
 
 describe('SummaryService.enqueuePending', () => {
-  it('returns queued: 0 and does not create a batch when nothing is pending', async () => {
-    const service = new SummaryService(fakePrisma(), fakeGemini());
+  it('returns queued: 0 and does not create or persist a batch when nothing is pending', async () => {
+    const upsert = vi.fn();
+    const transaction = vi.fn((ops: Promise<unknown>[]) => Promise.all(ops));
+    const prisma = fakePrisma({
+      summary: {
+        findMany: vi.fn().mockResolvedValue([]),
+        upsert,
+        update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        count: vi.fn().mockResolvedValue(0),
+      },
+      $transaction: transaction,
+    });
+    const createBatch = vi.fn().mockResolvedValue('batches/123');
+    const service = new SummaryService(prisma, fakeGemini({ createBatch }));
 
     const result = await service.enqueuePending();
 
     expect(result).toEqual({ batchName: null, queued: 0 });
+    expect(createBatch).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
   });
 
   it('selects articles with no summary or a failed summary', async () => {
