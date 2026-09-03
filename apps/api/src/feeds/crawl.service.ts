@@ -90,6 +90,7 @@ export class CrawlService {
         ? { topic: { equals: topic, mode: 'insensitive' } }
         : undefined,
       orderBy: { publishedAt: 'desc' },
+      include: { summary: true },
     });
   }
 
