@@ -73,13 +73,9 @@ curl -X POST http://localhost:3001/summarize
 ```
 
 This fetches each unsummarized article's full source (webpage text, or the
-README for GitHub repos), submits them as one Gemini batch job, and returns
-how many were queued. Batches can take up to a few hours; poll for
-completion and write results back with:
-
-```bash
-curl -X POST http://localhost:3001/summarize/ingest
-```
+README for GitHub repos) and calls Gemini directly for each one, writing the
+result back as it completes. Failed articles (a dead link, a model error)
+are retried the next time you call this endpoint.
 
 Set `GEMINI_API_KEY` in `.env` (get one at
 https://aistudio.google.com/apikey). `GEMINI_MODEL` defaults to

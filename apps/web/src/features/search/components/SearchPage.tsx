@@ -1,15 +1,24 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { ArticleCard } from "@/components/ui/ArticleCard";
-import { SearchField } from "@/components/ui/SearchField";
-import { ResultToolbar } from "@/components/ui/ResultToolbar";
+
+import { useCallback, useMemo, useState } from "react";
 import { Pagination } from "@/components/ui/Pagination";
-import { articlesApi } from "../api/articles";
+import { ResultToolbar } from "@/components/ui/ResultToolbar";
+import { SearchField } from "@/components/ui/SearchField";
 import { useSavedLinks } from "@/features/saved/hooks/useSavedLinks";
-import type { Article } from "../types/article";
+import {
+  ARTICLE_PAGE_SIZE,
+  ARTICLE_SOURCES,
+  filterAndSortArticles,
+  getTotalPages,
+  paginate,
+} from "@/lib/article-list";
 import { SearchLanding } from "./SearchLanding";
+import { SearchResultCard } from "./SearchResultCard";
+import { useSearchArticles } from "../hooks/useSearchArticles";
+
 export function SearchPage() {
-  const [articles, setArticles] = useState<Article[]>([]);
+  const { articles, loading, message, search } = useSearchArticles();
+  const { saved, save, remove } = useSavedLinks();
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("All");
   const [sort, setSort] = useState<"relevance" | "newest" | "oldest">(
@@ -17,127 +26,117 @@ export function SearchPage() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [hasSearched, setHasSearched] = useState(false);
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { saved, save } = useSavedLinks();
-  async function refresh() {
-    try {
-      setArticles(await articlesApi.list());
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Could not load results.",
-      );
-    }
-  }
-  useEffect(() => {
-    refresh();
+
+  const savedIds = useMemo(
+    () => new Set(saved.map((item) => item.id)),
+    [saved],
+  );
+
+  const handleQueryChange = useCallback((value: string) => {
+    setQuery(value);
+    setCurrentPage(1);
   }, []);
-  async function search() {
-    if (!query.trim()) return;
+
+  const handleSourceChange = useCallback((value: string) => {
+    setSource(value);
+    setCurrentPage(1);
+  }, []);
+
+  const handleSortChange = useCallback(
+    (value: "relevance" | "newest" | "oldest") => {
+      setSort(value);
+      setCurrentPage(1);
+    },
+    [],
+  );
+
+  const handleSearch = useCallback(() => {
+    const term = query.trim();
+
+    if (!term) return;
 
     setHasSearched(true);
-    setLoading(true);
-    setMessage("");
-    try {
-      await articlesApi.crawlGithub(query.trim());
-      await refresh();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Search failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-  const results = useMemo(() => {
-    const filtered = articles.filter((article) => {
-      const matchesSource =
-        source === "All" ||
-        article.source.toLowerCase().includes(source.toLowerCase());
-      const term = query.toLowerCase();
-      return (
-        matchesSource &&
-        (!term ||
-          article.title.toLowerCase().includes(term) ||
-          article.topic.toLowerCase().includes(term) ||
-          article.source.toLowerCase().includes(term))
-      );
-    });
-
-    if (sort === "newest") {
-      return [...filtered].sort(
-        (first, second) =>
-          new Date(second.publishedAt).getTime() -
-          new Date(first.publishedAt).getTime(),
-      );
-    }
-
-    if (sort === "oldest") {
-      return [...filtered].sort(
-        (first, second) =>
-          new Date(first.publishedAt).getTime() -
-          new Date(second.publishedAt).getTime(),
-      );
-    }
-
-    return filtered;
-  }, [articles, query, source, sort]);
-  const totalPages = Math.ceil(results.length / 10);
-  const pageResults = results.slice((currentPage - 1) * 10, currentPage * 10);
-
-  useEffect(() => {
     setCurrentPage(1);
-  }, [query, source, sort]);
+    void search(term);
+  }, [query, search]);
 
-  useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  const results = useMemo(
+    () => filterAndSortArticles(articles, { query, source, sort }),
+    [articles, query, source, sort],
+  );
+  const totalPages = getTotalPages(results.length, ARTICLE_PAGE_SIZE);
+  const visiblePage = totalPages ? Math.min(currentPage, totalPages) : 1;
+  const pageResults = paginate(results, visiblePage, ARTICLE_PAGE_SIZE);
 
   if (!hasSearched) {
     return (
-      <SearchLanding query={query} onQueryChange={setQuery} onSearch={search} />
+      <SearchLanding
+        query={query}
+        onQueryChange={handleQueryChange}
+        onSearch={handleSearch}
+        loading={loading}
+      />
     );
   }
+
   return (
-    <section>
-      <h1 className="mb-[11px] text-[31px] font-semibold leading-tight tracking-[-.045em] sm:text-[36px]">
+    <section aria-labelledby="search-results-title">
+      <h1
+        id="search-results-title"
+        className="mb-[11px] text-[31px] font-semibold leading-tight tracking-[-.045em] sm:text-[36px]"
+      >
         Search
       </h1>
       <SearchField
         value={query}
-        onChange={setQuery}
-        onSubmit={search}
+        onChange={handleQueryChange}
+        onSubmit={handleSearch}
         placeholder="Search GitHub and arXiv..."
+        disabled={loading}
       />
       <ResultToolbar
+        sources={ARTICLE_SOURCES}
         source={source}
-        onSourceChange={setSource}
+        onSourceChange={handleSourceChange}
         sort={sort}
-        onSortChange={setSort}
+        onSortChange={handleSortChange}
       />
-      <p className="my-[17px] text-[17px] text-[#b5bdca]">
-        {results.length ? `About ${results.length} results` : "No results yet"}
+      <p
+        className="my-[17px] text-[17px] text-[#b5bdca]"
+        role={loading ? "status" : undefined}
+        aria-live="polite"
+      >
+        {loading
+          ? "Searching for the latest results..."
+          : results.length
+            ? `About ${results.length} results`
+            : "No matching results"}
       </p>
-      {message && <p className="text-[17px] text-[#ff9ba5]">{message}</p>}
-      <div className="grid gap-[13px]">
+      {message && (
+        <p className="text-[17px] text-[#ff9ba5]" role="alert">
+          {message}
+        </p>
+      )}
+      <div className="grid gap-[13px]" aria-busy={loading}>
         {pageResults.map((article) => (
-          <ArticleCard
+          <SearchResultCard
             key={article.id}
             article={article}
             onSave={save}
-            saved={saved.some((item) => item.id === article.id)}
+            onRemove={() => remove(article.id)}
+            saved={savedIds.has(article.id)}
           />
         ))}
       </div>
       {results.length > 0 && (
         <>
           <Pagination
-            currentPage={currentPage}
+            currentPage={visiblePage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
           />
           <p className="mt-[13px] text-center text-[16px] text-[#bec6d4]">
-            10 results per page
+            {ARTICLE_PAGE_SIZE} results per page
           </p>
         </>
       )}

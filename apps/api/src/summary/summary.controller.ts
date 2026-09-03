@@ -6,12 +6,7 @@ export class SummaryController {
   constructor(private readonly summary: SummaryService) {}
 
   @Post()
-  enqueue() {
-    return this.summary.enqueuePending();
-  }
-
-  @Post('ingest')
-  ingest() {
-    return this.summary.ingestBatches();
+  summarize() {
+    return this.summary.summarizePending();
   }
 }

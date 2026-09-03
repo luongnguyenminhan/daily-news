@@ -4,19 +4,13 @@ import { SummaryService } from './summary.service.js';
 
 describe('SummaryController', () => {
   let controller: SummaryController;
-  let service: {
-    enqueuePending: ReturnType<typeof vi.fn>;
-    ingestBatches: ReturnType<typeof vi.fn>;
-  };
+  let service: { summarizePending: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     service = {
-      enqueuePending: vi
+      summarizePending: vi
         .fn()
-        .mockResolvedValue({ batchName: 'batches/123', queued: 1 }),
-      ingestBatches: vi
-        .fn()
-        .mockResolvedValue({ done: 1, failed: 0, stillProcessing: 0 }),
+        .mockResolvedValue({ processed: 1, done: 1, failed: 0 }),
     };
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SummaryController],
@@ -26,17 +20,10 @@ describe('SummaryController', () => {
     controller = module.get(SummaryController);
   });
 
-  it('POST /summarize delegates to enqueuePending', async () => {
-    const result = await controller.enqueue();
+  it('POST /summarize delegates to summarizePending', async () => {
+    const result = await controller.summarize();
 
-    expect(service.enqueuePending).toHaveBeenCalled();
-    expect(result).toEqual({ batchName: 'batches/123', queued: 1 });
-  });
-
-  it('POST /summarize/ingest delegates to ingestBatches', async () => {
-    const result = await controller.ingest();
-
-    expect(service.ingestBatches).toHaveBeenCalled();
-    expect(result).toEqual({ done: 1, failed: 0, stillProcessing: 0 });
+    expect(service.summarizePending).toHaveBeenCalled();
+    expect(result).toEqual({ processed: 1, done: 1, failed: 0 });
   });
 });

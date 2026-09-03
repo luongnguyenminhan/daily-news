@@ -31,15 +31,13 @@ model Summary {
   article   Article       @relation(fields: [articleId], references: [id])
   title     String?
   content   String?
-  status    SummaryStatus @default(PROCESSING)
-  batchName String
+  status    SummaryStatus
   error     String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
 
 enum SummaryStatus {
-  PROCESSING
   DONE
   FAILED
 }
