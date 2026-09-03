@@ -7,6 +7,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { articlesApi } from "../api/articles";
 import { useSavedLinks } from "@/features/saved/hooks/useSavedLinks";
 import type { Article } from "../types/article";
+import { SearchLanding } from "./SearchLanding";
 export function SearchPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [query, setQuery] = useState("");
@@ -15,6 +16,7 @@ export function SearchPage() {
     "relevance",
   );
   const [currentPage, setCurrentPage] = useState(1);
+  const [hasSearched, setHasSearched] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const { saved, save } = useSavedLinks();
@@ -31,7 +33,9 @@ export function SearchPage() {
     refresh();
   }, []);
   async function search() {
-    if (!query.trim()) return refresh();
+    if (!query.trim()) return;
+
+    setHasSearched(true);
     setLoading(true);
     setMessage("");
     try {
@@ -88,6 +92,12 @@ export function SearchPage() {
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  if (!hasSearched) {
+    return (
+      <SearchLanding query={query} onQueryChange={setQuery} onSearch={search} />
+    );
+  }
   return (
     <section>
       <h1 className="mb-[11px] text-[31px] font-semibold leading-tight tracking-[-.045em] sm:text-[36px]">

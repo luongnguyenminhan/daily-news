@@ -35,11 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </aside>
       <section className="ml-0 h-screen min-w-0 overflow-y-auto md:ml-[266px]">
-        <header className="sticky top-0 z-10 flex h-[61px] items-center justify-end border-b border-[#202938] bg-[#060b13]/95 px-[27px] backdrop-blur">
-          <div className="grid h-[38px] w-[38px] place-items-center rounded-[10px] bg-[#5436dd] text-[19px] font-semibold text-white shadow-[inset_0_1px_0_#806aff]">
-            U
-          </div>
-        </header>
+        <header className="sticky top-0 z-10 h-[61px] border-b border-[#202938] bg-[#060b13]/95 backdrop-blur" />
         <main className="w-full max-w-[1290px] px-4 py-[18px] sm:px-9 sm:pb-[30px]">
           {children}
         </main>
