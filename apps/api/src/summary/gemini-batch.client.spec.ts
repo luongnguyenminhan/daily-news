@@ -62,7 +62,7 @@ describe('GeminiBatchClient.getBatchState normalization', () => {
   it.each([
     ['JOB_STATE_CANCELLING', 'RUNNING'],
     ['JOB_STATE_PAUSED', 'RUNNING'],
-    ['JOB_STATE_PARTIALLY_SUCCEEDED', 'SUCCEEDED'],
+    ['JOB_STATE_PARTIALLY_SUCCEEDED', 'FAILED'],
   ] as const)('normalizes %s to %s', async (sdkState, expectedState) => {
     const client = fakeClient({
       batches: {
