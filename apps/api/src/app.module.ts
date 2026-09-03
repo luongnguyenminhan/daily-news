@@ -3,9 +3,10 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { FeedsModule } from './feeds/feeds.module.js';
+import { SummaryModule } from './summary/summary.module.js';
 
 @Module({
-  imports: [PrismaModule, FeedsModule],
+  imports: [PrismaModule, FeedsModule, SummaryModule],
   controllers: [AppController],
   providers: [AppService],
 })
