@@ -58,8 +58,26 @@ export class SummaryService {
     let stillProcessing = 0;
 
     for (const { batchName } of inFlight) {
-      const { state, resultFileName } =
-        await this.gemini.getBatchState(batchName);
+      const processingRows = await this.prisma.summary.findMany({
+        where: { batchName, status: 'PROCESSING' },
+        select: { articleId: true },
+      });
+      const expectedArticleIds = new Set(
+        processingRows.map((row) => row.articleId),
+      );
+
+      let batchState: Awaited<ReturnType<GeminiBatchClient['getBatchState']>>;
+      try {
+        batchState = await this.gemini.getBatchState(batchName);
+      } catch (error) {
+        failed += await this.markBatchFailed(
+          batchName,
+          `Failed to get batch state: ${errorMessage(error)}`,
+        );
+        continue;
+      }
+
+      const { state, resultFileName } = batchState;
 
       if (state === 'PENDING' || state === 'RUNNING') {
         stillProcessing += await this.prisma.summary.count({
@@ -77,40 +95,91 @@ export class SummaryService {
         continue;
       }
 
-      const results = await this.gemini.downloadResults(resultFileName);
+      let results: Awaited<ReturnType<GeminiBatchClient['downloadResults']>>;
+      try {
+        results = await this.gemini.downloadResults(resultFileName);
+      } catch (error) {
+        failed += await this.markBatchFailed(
+          batchName,
+          `Failed to download batch results: ${errorMessage(error)}`,
+        );
+        continue;
+      }
+
+      const acceptedArticleIds = new Set<string>();
       for (const result of results) {
-        if (result.error) {
-          await this.prisma.summary.update({
-            where: { articleId: result.key },
-            data: { status: 'FAILED', error: result.error },
-          });
-          failed += 1;
-        } else {
-          await this.prisma.summary.update({
-            where: { articleId: result.key },
-            data: {
-              status: 'DONE',
+        if (
+          !expectedArticleIds.has(result.key) ||
+          acceptedArticleIds.has(result.key)
+        ) {
+          continue;
+        }
+        acceptedArticleIds.add(result.key);
+
+        const update = result.error
+          ? {
+              status: 'FAILED' as const,
+              error: result.error,
+            }
+          : {
+              status: 'DONE' as const,
               title: result.title,
               content: result.content,
               error: null,
-            },
-          });
-          done += 1;
+            };
+        const affected = await this.prisma.summary.updateMany({
+          where: {
+            articleId: result.key,
+            batchName,
+            status: 'PROCESSING',
+          },
+          data: update,
+        });
+
+        if (result.error) {
+          failed += affected.count;
+        } else {
+          done += affected.count;
         }
       }
 
-      const missingResults = await this.prisma.summary.updateMany({
-        where: { batchName, status: 'PROCESSING' },
-        data: {
-          status: 'FAILED',
-          error: 'Batch succeeded without a result for this article',
-        },
-      });
-      failed += missingResults.count;
+      for (const articleId of expectedArticleIds) {
+        if (acceptedArticleIds.has(articleId)) {
+          continue;
+        }
+
+        const missingResult = await this.prisma.summary.updateMany({
+          where: {
+            articleId,
+            batchName,
+            status: 'PROCESSING',
+          },
+          data: {
+            status: 'FAILED',
+            error: 'Batch succeeded without a result for this article',
+          },
+        });
+        failed += missingResult.count;
+      }
     }
 
     return { done, failed, stillProcessing };
   }
+
+  private async markBatchFailed(
+    batchName: string,
+    error: string,
+  ): Promise<number> {
+    const result = await this.prisma.summary.updateMany({
+      where: { batchName, status: 'PROCESSING' },
+      data: { status: 'FAILED', error },
+    });
+    return result.count;
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function mapWithConcurrency<T, R>(
