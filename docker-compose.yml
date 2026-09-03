@@ -28,6 +28,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/daily_news?schema=public}
       PORT: 3001
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
     command: sh -c "npm exec --workspace=api -- prisma migrate deploy && npm run start:prod --workspace=api"
     ports:
       - '3001:3001'
