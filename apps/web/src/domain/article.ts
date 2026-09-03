@@ -6,8 +6,8 @@ export interface Article {
   topic: string;
   publishedAt: string;
   summary?: {
-    title: string;
-    content: string;
+    title: string | null;
+    content: string | null;
     status: "PROCESSING" | "DONE" | "FAILED";
   } | null;
 }
