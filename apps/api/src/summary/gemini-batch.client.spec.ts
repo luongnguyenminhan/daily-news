@@ -1,3 +1,5 @@
+import { access, writeFile } from 'node:fs/promises';
+
 import { GeminiBatchClient } from './gemini-batch.client.js';
 import type { GeminiClientLike } from './gemini-batch.client.js';
 
@@ -56,8 +58,65 @@ describe('GeminiBatchClient.getBatchState', () => {
   });
 });
 
+describe('GeminiBatchClient.getBatchState normalization', () => {
+  it.each([
+    ['JOB_STATE_CANCELLING', 'RUNNING'],
+    ['JOB_STATE_PAUSED', 'RUNNING'],
+    ['JOB_STATE_PARTIALLY_SUCCEEDED', 'SUCCEEDED'],
+  ] as const)('normalizes %s to %s', async (sdkState, expectedState) => {
+    const client = fakeClient({
+      batches: {
+        create: vi.fn(),
+        get: vi.fn().mockResolvedValue({ state: sdkState }),
+      },
+    });
+    const batch = new GeminiBatchClient(client, 'gemini-3.8-flash');
+
+    const state = await batch.getBatchState('batches/123');
+
+    expect(state.state).toBe(expectedState);
+  });
+});
+
 describe('GeminiBatchClient.downloadResults', () => {
-  it('parses each JSONL line into a summary result', async () => {
+  it('reads JSONL written by the SDK download call and cleans up the temporary file', async () => {
+    const line = JSON.stringify({
+      key: 'a1',
+      response: {
+        candidates: [
+          {
+            content: {
+              parts: [{ text: JSON.stringify({ title: 'T', content: 'C' }) }],
+            },
+          },
+        ],
+      },
+    });
+    const client = fakeClient({
+      files: {
+        upload: vi.fn(),
+        download: vi.fn(async ({ file, downloadPath }) => {
+          expect(file).toBe('files/results');
+          await writeFile(downloadPath, `${line}\n`, 'utf8');
+          return undefined;
+        }),
+      },
+    });
+    const batch = new GeminiBatchClient(client, 'gemini-3.8-flash');
+
+    const results = await batch.downloadResults('files/results');
+    const downloadCall = vi.mocked(client.files.download).mock.calls[0];
+    const downloadPath = downloadCall[0].downloadPath;
+
+    expect(results).toEqual([{ key: 'a1', title: 'T', content: 'C' }]);
+    expect(client.files.download).toHaveBeenCalledWith({
+      file: 'files/results',
+      downloadPath: expect.any(String),
+    });
+    await expect(access(downloadPath)).rejects.toThrow();
+  });
+
+  it('parses a string response for compatibility with alternate clients', async () => {
     const line = JSON.stringify({
       key: 'a1',
       response: {

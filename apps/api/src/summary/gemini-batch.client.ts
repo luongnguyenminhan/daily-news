@@ -119,10 +119,13 @@ function normalizeBatchState(state: string | undefined): BatchState {
     case 'RUNNING':
     case 'JOB_STATE_RUNNING':
     case 'JOB_STATE_UPDATING':
+    case 'JOB_STATE_CANCELLING':
+    case 'JOB_STATE_PAUSED':
       return 'RUNNING';
     case 'SUCCEEDED':
     case 'JOB_STATE_SUCCEEDED':
     case 'JOB_STATE_PARTIALLY_SUCCEEDED':
+      // Task 5 must reconcile processing rows missing from downloaded results.
       return 'SUCCEEDED';
     case 'FAILED':
     case 'JOB_STATE_FAILED':
