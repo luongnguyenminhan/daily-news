@@ -1,0 +1,39 @@
+import { Icon } from "./Icon";
+
+interface SearchFieldProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  placeholder: string;
+}
+
+export function SearchField({
+  value,
+  onChange,
+  onSubmit,
+  placeholder,
+}: SearchFieldProps) {
+  return (
+    <div className="flex w-full gap-1.5 sm:gap-2.5">
+      <div className="flex h-11 flex-1 items-center gap-2.5 rounded-[7px] border border-[#253043] bg-[#0e1521]/75 px-3 sm:gap-[18px] sm:px-[18px]">
+        <Icon
+          name="search"
+          className="h-[27px] w-[27px] shrink-0 text-[#9aa6ba]"
+        />
+        <input
+          className="w-full border-0 bg-transparent text-[15px] text-[#f3f5fb] outline-none placeholder:text-[#a2acbc] sm:text-[18px]"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && onSubmit()}
+          placeholder={placeholder}
+        />
+      </div>
+      <button
+        className="h-11 w-[140px] shrink-0 rounded-[7px] bg-[#5638e8] px-3 text-[14px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.2)] transition-colors hover:bg-[#6749f4] sm:px-[18px] sm:text-[17px]"
+        onClick={onSubmit}
+      >
+        Search
+      </button>
+    </div>
+  );
+}

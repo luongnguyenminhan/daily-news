@@ -58,12 +58,16 @@ export class CrawlService {
 
     const res = await fetch(url, { headers });
     if (!res.ok) {
-      throw new BadGatewayException(`GitHub search failed: ${res.status} ${await res.text()}`);
+      throw new BadGatewayException(
+        `GitHub search failed: ${res.status} ${await res.text()}`,
+      );
     }
 
     const { items: repos } = (await res.json()) as { items: GithubRepo[] };
     const items: ArticleInput[] = repos.map((repo) => ({
-      title: repo.description ? `${repo.full_name} — ${repo.description}` : repo.full_name,
+      title: repo.description
+        ? `${repo.full_name} — ${repo.description}`
+        : repo.full_name,
       url: repo.html_url,
       source: 'GitHub',
       topic,
@@ -82,12 +86,18 @@ export class CrawlService {
 
   articles(topic?: string) {
     return this.prisma.article.findMany({
-      where: topic ? { topic: { equals: topic, mode: 'insensitive' } } : undefined,
+      where: topic
+        ? { topic: { equals: topic, mode: 'insensitive' } }
+        : undefined,
       orderBy: { publishedAt: 'desc' },
     });
   }
 
-  private async fetchFeed(feed: { url: string; name: string; topic: string }): Promise<ArticleInput[]> {
+  private async fetchFeed(feed: {
+    url: string;
+    name: string;
+    topic: string;
+  }): Promise<ArticleInput[]> {
     try {
       const parsed = await parser.parseURL(feed.url);
       return (parsed.items ?? [])
@@ -100,7 +110,9 @@ export class CrawlService {
           publishedAt: item.isoDate ? new Date(item.isoDate) : new Date(),
         }));
     } catch (error) {
-      this.logger.warn(`Failed to crawl feed ${feed.url}: ${(error as Error).message}`);
+      this.logger.warn(
+        `Failed to crawl feed ${feed.url}: ${(error as Error).message}`,
+      );
       return [];
     }
   }

@@ -13,7 +13,9 @@ export class FeedsService {
 
   list(topic?: string) {
     return this.prisma.feed.findMany({
-      where: topic ? { topic: { equals: topic, mode: 'insensitive' } } : undefined,
+      where: topic
+        ? { topic: { equals: topic, mode: 'insensitive' } }
+        : undefined,
       orderBy: { createdAt: 'desc' },
     });
   }

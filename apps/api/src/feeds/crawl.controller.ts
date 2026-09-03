@@ -1,4 +1,10 @@
-import { BadRequestException, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { CrawlService } from './crawl.service.js';
 
 @Controller()
