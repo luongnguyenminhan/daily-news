@@ -132,7 +132,6 @@ function normalizeBatchState(state: string | undefined): BatchState {
       return 'FAILED';
     case 'CANCELLED':
     case 'JOB_STATE_CANCELLED':
-    case 'JOB_STATE_CANCELLING':
       return 'CANCELLED';
     case 'EXPIRED':
     case 'JOB_STATE_EXPIRED':
