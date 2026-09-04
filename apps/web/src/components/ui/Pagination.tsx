@@ -18,6 +18,20 @@ export function Pagination({
   const buttonFocusStyles =
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8568ff]";
 
+  function handlePageChange(page: number) {
+    const nextPage = Math.max(1, Math.min(page, totalPages));
+
+    if (nextPage === currentPage) {
+      return;
+    }
+
+    onPageChange(nextPage);
+    document.querySelector("main")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
   return (
     <nav
       className="mt-[13px] flex items-center justify-center gap-1.5 sm:gap-[17px]"
@@ -28,7 +42,7 @@ export function Pagination({
         className={`flex h-[53px] min-w-[46px] items-center gap-1 rounded-[9px] border border-[#202b3b] bg-[#0e1521]/70 px-[14px] text-[17px] text-[#b8c2d0] transition-colors hover:border-[#35435a] disabled:cursor-not-allowed disabled:opacity-40 ${buttonFocusStyles}`}
         disabled={currentPage === 1}
         aria-label="Previous page"
-        onClick={() => onPageChange(currentPage - 1)}
+        onClick={() => handlePageChange(currentPage - 1)}
       >
         <Icon name="chevron-left" className="h-4 w-4" />
         <span>Previous</span>
@@ -48,7 +62,7 @@ export function Pagination({
             key={page}
             className={`h-[53px] min-w-[36px] rounded-[9px] border border-[#202b3b] bg-[#0e1521]/70 px-2 text-[17px] text-[#b8c2d0] transition-colors hover:border-[#35435a] sm:min-w-[46px] sm:px-[14px] ${page === currentPage ? "border-[#603ef1] bg-[#593ae8] text-white" : ""} ${buttonFocusStyles}`}
             aria-current={page === currentPage ? "page" : undefined}
-            onClick={() => onPageChange(page)}
+            onClick={() => handlePageChange(page)}
           >
             {page}
           </button>
@@ -59,7 +73,7 @@ export function Pagination({
         className={`flex h-[53px] min-w-[46px] items-center justify-center gap-1 rounded-[9px] border border-[#202b3b] bg-[#0e1521]/70 px-[14px] text-[17px] text-[#b8c2d0] transition-colors hover:border-[#35435a] disabled:cursor-not-allowed disabled:opacity-40 ${buttonFocusStyles}`}
         disabled={currentPage === totalPages}
         aria-label="Next page"
-        onClick={() => onPageChange(currentPage + 1)}
+        onClick={() => handlePageChange(currentPage + 1)}
       >
         <span>Next</span>
         <Icon name="chevron-right" className="h-4 w-4" />

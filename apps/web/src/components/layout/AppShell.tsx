@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
 
 const navigation = [
-  { href: "/", label: "Search", icon: "search" as const },
+  { href: "/search", label: "Search", icon: "search" as const },
   { href: "/saved", label: "Saved", icon: "bookmark" as const },
 ];
 

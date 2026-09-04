@@ -33,7 +33,7 @@ export function SearchLanding({
         </p>
 
         <form
-          className="mx-auto mt-12 flex h-11 w-full max-w-[600px] gap-2 rounded-lg border border-[#253043] bg-[#0e1521]/75 p-1"
+          className="mx-auto mt-12 flex h-11 w-full max-w-[600px] rounded-lg border border-[#253043] bg-[#0e1521]/75 p-1 transition-colors focus-within:border-[#8568ff]"
           onSubmit={(event) => {
             event.preventDefault();
             if (!loading) onSearch();
@@ -44,7 +44,7 @@ export function SearchLanding({
             <input
               type="search"
               aria-label="Search papers, repositories, authors, and topics"
-              className="w-full border-0 bg-transparent text-[15px] text-[#f3f5fb] outline-none placeholder:text-[#7f8a9d] disabled:cursor-not-allowed disabled:opacity-60 sm:text-[18px]"
+              className="w-full border-0 bg-transparent text-[15px] text-[#f3f5fb] outline-none placeholder:text-[#7f8a9d] focus:border-0 focus:outline-none focus:ring-0 focus-visible:!outline-none focus-visible:!outline-offset-0 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[18px]"
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               placeholder="Search papers, repositories, authors, topics..."
@@ -52,14 +52,6 @@ export function SearchLanding({
               disabled={loading}
             />
           </div>
-          <button
-            type="submit"
-            aria-label={loading ? "Searching" : "Search"}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#5638e8] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.2)] transition-colors hover:bg-[#6749f4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8568ff] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={loading}
-          >
-            <Icon name="search" className="h-5 w-5" />
-          </button>
         </form>
       </div>
     </section>

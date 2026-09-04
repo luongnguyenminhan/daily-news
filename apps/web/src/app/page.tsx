@@ -1,4 +1,5 @@
-import { SearchPage } from "@/features/search/components/SearchPage";
+import { SearchLandingPage } from "@/features/search/components/SearchLandingPage";
+
 export default function Home() {
-  return <SearchPage />;
+  return <SearchLandingPage />;
 }

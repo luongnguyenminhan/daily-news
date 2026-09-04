@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Pagination } from "@/components/ui/Pagination";
 import { ResultToolbar } from "@/components/ui/ResultToolbar";
 import { SearchField } from "@/components/ui/SearchField";
@@ -12,20 +13,38 @@ import {
   getTotalPages,
   paginate,
 } from "@/lib/article-list";
-import { SearchLanding } from "./SearchLanding";
 import { SearchResultCard } from "./SearchResultCard";
 import { useSearchArticles } from "../hooks/useSearchArticles";
 
 export function SearchPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { articles, loading, message, search } = useSearchArticles();
   const { saved, save, remove } = useSavedLinks();
-  const [query, setQuery] = useState("");
+  const queryFromUrl = searchParams.get("q")?.trim() ?? "";
+  const [query, setQuery] = useState(queryFromUrl);
   const [source, setSource] = useState("All");
   const [sort, setSort] = useState<"relevance" | "newest" | "oldest">(
     "relevance",
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const [hasSearched, setHasSearched] = useState(false);
+  const lastSearchedQuery = useRef("");
+
+  useEffect(() => {
+    setQuery(queryFromUrl);
+    setCurrentPage(1);
+
+    if (
+      loading ||
+      !queryFromUrl ||
+      lastSearchedQuery.current === queryFromUrl
+    ) {
+      return;
+    }
+
+    lastSearchedQuery.current = queryFromUrl;
+    void search(queryFromUrl);
+  }, [loading, queryFromUrl, search]);
 
   const savedIds = useMemo(
     () => new Set(saved.map((item) => item.id)),
@@ -53,31 +72,29 @@ export function SearchPage() {
   const handleSearch = useCallback(() => {
     const term = query.trim();
 
-    if (!term) return;
+    if (!term) {
+      return;
+    }
 
-    setHasSearched(true);
-    setCurrentPage(1);
-    void search(term);
-  }, [query, search]);
+    if (term === queryFromUrl) {
+      lastSearchedQuery.current = term;
+      void search(term);
+      return;
+    }
 
-  const results = useMemo(
-    () => filterAndSortArticles(articles, { query, source, sort }),
-    [articles, query, source, sort],
-  );
+    router.push(`/search?q=${encodeURIComponent(term)}`);
+  }, [query, queryFromUrl, router, search]);
+
+  const results = useMemo(() => {
+    if (!queryFromUrl) {
+      return [];
+    }
+
+    return filterAndSortArticles(articles, { query, source, sort });
+  }, [articles, query, queryFromUrl, source, sort]);
   const totalPages = getTotalPages(results.length, ARTICLE_PAGE_SIZE);
   const visiblePage = totalPages ? Math.min(currentPage, totalPages) : 1;
   const pageResults = paginate(results, visiblePage, ARTICLE_PAGE_SIZE);
-
-  if (!hasSearched) {
-    return (
-      <SearchLanding
-        query={query}
-        onQueryChange={handleQueryChange}
-        onSearch={handleSearch}
-        loading={loading}
-      />
-    );
-  }
 
   return (
     <section aria-labelledby="search-results-title">
@@ -106,11 +123,13 @@ export function SearchPage() {
         role={loading ? "status" : undefined}
         aria-live="polite"
       >
-        {loading
-          ? "Searching for the latest results..."
-          : results.length
-            ? `About ${results.length} results`
-            : "No matching results"}
+        {!queryFromUrl
+          ? "Enter a search term to find the latest results."
+          : loading
+            ? "Searching for the latest results..."
+            : results.length
+              ? `About ${results.length} results`
+              : "No matching results"}
       </p>
       {message && (
         <p className="text-[17px] text-[#ff9ba5]" role="alert">
