@@ -77,7 +77,11 @@ export function SavedPage() {
           <ArticleCard
             key={item.id}
             article={item}
-            title={item.label || item.title}
+            title={`${item.topic}: ${item.label || item.title}`}
+            subtitle={item.title}
+            description={
+              item.summary?.content ?? "No AI-generated description yet."
+            }
             saved
             onBookmarkClick={() => remove(item.id)}
           />

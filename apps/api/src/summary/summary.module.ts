@@ -13,7 +13,7 @@ import { GeminiSummaryClient } from './gemini-summary.client.js';
       useFactory: () =>
         new GeminiSummaryClient(
           new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }),
-          process.env.GEMINI_MODEL ?? 'gemini-3.8-flash',
+          process.env.GEMINI_MODEL ?? 'gemini-3.7-flash',
         ),
     },
   ],

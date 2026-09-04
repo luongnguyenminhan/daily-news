@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { LAST_SEARCH_HREF_STORAGE_KEY } from "@/features/search/lib/search-navigation";
 
 const navigation = [
   { href: "/search", label: "Search", icon: "search" as const },
@@ -12,9 +13,11 @@ const navigation = [
 
 function NavigationLinks({
   pathname,
+  searchHref,
   mobile = false,
 }: {
   pathname: string;
+  searchHref: string;
   mobile?: boolean;
 }) {
   return (
@@ -24,11 +27,12 @@ function NavigationLinks({
     >
       {navigation.map(({ href, label, icon }) => {
         const active = pathname === href;
+        const destination = href === "/search" ? searchHref : href;
 
         return (
           <Link
             key={href}
-            href={href}
+            href={destination}
             aria-current={active ? "page" : undefined}
             className={
               mobile
@@ -52,6 +56,15 @@ function NavigationLinks({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [searchHref, setSearchHref] = useState("/search");
+
+  useEffect(() => {
+    const lastSearchHref = window.sessionStorage.getItem(
+      LAST_SEARCH_HREF_STORAGE_KEY,
+    );
+
+    setSearchHref(lastSearchHref ?? "/search");
+  }, [pathname]);
 
   return (
     <div className="relative z-10 h-screen overflow-hidden">
@@ -62,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           Daily News
         </Link>
-        <NavigationLinks pathname={pathname} />
+        <NavigationLinks pathname={pathname} searchHref={searchHref} />
       </aside>
       <section className="ml-0 h-screen min-w-0 overflow-y-auto md:ml-[266px]">
         <header className="sticky top-0 z-10 h-[61px] border-b border-[#202938] bg-[#060b13]/95 backdrop-blur">
@@ -73,7 +86,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               Daily News
             </Link>
-            <NavigationLinks pathname={pathname} mobile />
+            <NavigationLinks
+              pathname={pathname}
+              searchHref={searchHref}
+              mobile
+            />
           </div>
         </header>
         <main className="w-full max-w-[1290px] px-4 py-[18px] sm:px-9 sm:pb-[30px]">

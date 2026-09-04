@@ -7,4 +7,9 @@ export const articlesApi = {
     request<Article[]>(`/crawl/github?topic=${encodeURIComponent(topic)}`, {
       method: "POST",
     }),
+  summarize: (articleIds: string[]) =>
+    request<{ processed: number; done: number; failed: number }>("/summarize", {
+      method: "POST",
+      body: JSON.stringify({ articleIds }),
+    }),
 };

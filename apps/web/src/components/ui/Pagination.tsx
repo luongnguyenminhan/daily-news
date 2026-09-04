@@ -26,10 +26,6 @@ export function Pagination({
     }
 
     onPageChange(nextPage);
-    document.querySelector("main")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
   }
 
   return (

@@ -23,7 +23,7 @@ export function SearchField({
         onSubmit?.();
       }}
     >
-      <div className="flex h-11 flex-1 items-center gap-2.5 rounded-[7px] border border-[#253043] bg-[#0e1521]/75 px-3 transition-colors focus-within:border-[#6f55dc] focus-within:ring-2 focus-within:ring-[#8568ff]/30 sm:gap-[18px] sm:px-[18px]">
+      <div className="flex h-11 flex-1 items-center gap-2.5 rounded-[7px] border border-[#253043] bg-[#0e1521]/75 px-3 transition-colors focus-within:border-[#8568ff] sm:gap-[18px] sm:px-[18px]">
         <Icon
           name="search"
           className="h-[27px] w-[27px] shrink-0 text-[#9aa6ba]"
@@ -31,7 +31,7 @@ export function SearchField({
         <input
           type="search"
           aria-label={placeholder}
-          className="w-full border-0 bg-transparent text-[15px] text-[#f3f5fb] outline-none placeholder:text-[#a2acbc] disabled:cursor-not-allowed disabled:opacity-60 sm:text-[18px]"
+          className="w-full border-0 bg-transparent text-[15px] text-[#f3f5fb] outline-none placeholder:text-[#a2acbc] focus:border-0 focus:outline-none focus:ring-0 focus-visible:!outline-none focus-visible:!outline-offset-0 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[18px]"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}

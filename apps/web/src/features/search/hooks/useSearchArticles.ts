@@ -7,22 +7,36 @@ import { articlesApi } from "../api/articles";
 
 const ARTICLES_QUERY_KEY = ["articles"];
 
-export function useSearchArticles() {
+interface UseSearchArticlesOptions {
+  enabled?: boolean;
+}
+
+export function useSearchArticles({
+  enabled = true,
+}: UseSearchArticlesOptions = {}) {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const articlesQuery = useQuery<Article[]>({
     queryKey: ARTICLES_QUERY_KEY,
     queryFn: articlesApi.list,
+    enabled,
   });
   const crawlMutation = useMutation({
-    mutationFn: articlesApi.crawlGithub,
+    mutationFn: (query: string) =>
+      query ? articlesApi.crawlGithub(query) : articlesApi.crawl(),
+  });
+  const summarizeMutation = useMutation({
+    mutationFn: articlesApi.summarize,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ARTICLES_QUERY_KEY });
+    },
   });
 
   const search = useCallback(
-    async (query: string) => {
+    async (query = "") => {
       const term = query.trim();
 
-      if (!term || articlesQuery.isFetching || crawlMutation.isPending) {
+      if (articlesQuery.isFetching || crawlMutation.isPending) {
         return false;
       }
 
@@ -40,6 +54,17 @@ export function useSearchArticles() {
     [articlesQuery.isFetching, crawlMutation, queryClient],
   );
 
+  const summarize = useCallback(
+    async (articleIds: string[]) => {
+      if (!articleIds.length) {
+        return;
+      }
+
+      await summarizeMutation.mutateAsync(articleIds);
+    },
+    [summarizeMutation],
+  );
+
   const queryMessage =
     articlesQuery.error instanceof Error
       ? articlesQuery.error.message
@@ -55,5 +80,7 @@ export function useSearchArticles() {
       crawlMutation.isPending,
     message: message || queryMessage,
     search,
+    summarize,
+    isSummarizing: summarizeMutation.isPending,
   };
 }

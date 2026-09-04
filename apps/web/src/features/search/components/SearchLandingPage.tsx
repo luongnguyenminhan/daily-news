@@ -12,6 +12,7 @@ export function SearchLandingPage() {
     const term = query.trim();
 
     if (!term) {
+      router.push("/search?all=1");
       return;
     }
 

@@ -23,7 +23,16 @@ describe('SummaryController', () => {
   it('POST /summarize delegates to summarizePending', async () => {
     const result = await controller.summarize();
 
-    expect(service.summarizePending).toHaveBeenCalled();
+    expect(service.summarizePending).toHaveBeenCalledWith(undefined);
     expect(result).toEqual({ processed: 1, done: 1, failed: 0 });
+  });
+
+  it('passes requested article IDs to summarizePending', async () => {
+    await controller.summarize({ articleIds: ['article-1', 'article-2'] });
+
+    expect(service.summarizePending).toHaveBeenCalledWith([
+      'article-1',
+      'article-2',
+    ]);
   });
 });

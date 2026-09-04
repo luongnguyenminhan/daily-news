@@ -25,7 +25,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/daily_news?schema=public}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-daily_news}?schema=public
       PORT: 3001
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}

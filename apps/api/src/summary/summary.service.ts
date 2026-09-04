@@ -3,7 +3,8 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { GeminiSummaryClient } from './gemini-summary.client.js';
 import { fetchSourceText } from './source-fetcher.js';
 
-const FETCH_CONCURRENCY = 5;
+const SUMMARY_CONCURRENCY = 2;
+const MAX_SUMMARY_ATTEMPTS = 3;
 
 @Injectable()
 export class SummaryService {
@@ -12,9 +13,12 @@ export class SummaryService {
     private readonly gemini: GeminiSummaryClient,
   ) {}
 
-  async summarizePending() {
+  async summarizePending(articleIds?: string[]) {
     const articles = await this.prisma.article.findMany({
-      where: { OR: [{ summary: null }, { summary: { status: 'FAILED' } }] },
+      where: {
+        OR: [{ summary: null }, { summary: { status: 'FAILED' } }],
+        ...(articleIds?.length ? { id: { in: articleIds } } : {}),
+      },
     });
 
     if (articles.length === 0) {
@@ -24,13 +28,16 @@ export class SummaryService {
     let done = 0;
     let failed = 0;
 
-    await mapWithConcurrency(articles, FETCH_CONCURRENCY, async (article) => {
+    await mapWithConcurrency(articles, SUMMARY_CONCURRENCY, async (article) => {
       try {
         const sourceText = await fetchSourceText(article);
-        const summary = await this.gemini.summarize({
-          articleTitle: article.title,
-          sourceText,
-        });
+        const summary = await summarizeWithRetry(() =>
+          this.gemini.summarize({
+            articleTitle: article.title,
+            articleSource: article.source,
+            sourceText,
+          }),
+        );
         await this.prisma.summary.upsert({
           where: { articleId: article.id },
           create: {
@@ -63,6 +70,34 @@ export class SummaryService {
 
     return { processed: articles.length, done, failed };
   }
+}
+
+async function summarizeWithRetry<T>(
+  summarize: () => Promise<T>,
+  attempt = 1,
+): Promise<T> {
+  try {
+    return await summarize();
+  } catch (error) {
+    if (attempt >= MAX_SUMMARY_ATTEMPTS || !isTemporaryGeminiError(error)) {
+      throw error;
+    }
+
+    await delay(1_000 * 2 ** (attempt - 1));
+    return summarizeWithRetry(summarize, attempt + 1);
+  }
+}
+
+function isTemporaryGeminiError(error: unknown): boolean {
+  const message = errorMessage(error);
+
+  return message.includes('503') || message.includes('UNAVAILABLE');
+}
+
+function delay(duration: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, duration);
+  });
 }
 
 function errorMessage(error: unknown): string {

@@ -48,6 +48,21 @@ describe('SummaryService.summarizePending', () => {
     });
   });
 
+  it('limits summaries to requested article IDs', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const prisma = fakePrisma({ article: { findMany } });
+    const service = new SummaryService(prisma, fakeGemini());
+
+    await service.summarizePending(['article-1', 'article-2']);
+
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        OR: [{ summary: null }, { summary: { status: 'FAILED' } }],
+        id: { in: ['article-1', 'article-2'] },
+      },
+    });
+  });
+
   it('summarizes a pending article and writes it as DONE', async () => {
     const article = {
       id: 'a1',
@@ -69,6 +84,7 @@ describe('SummaryService.summarizePending', () => {
     expect(result).toEqual({ processed: 1, done: 1, failed: 0 });
     expect(summarize).toHaveBeenCalledWith({
       articleTitle: 'Title',
+      articleSource: 'Example',
       sourceText: 'fetched source text',
     });
     expect(upsert).toHaveBeenCalledWith({

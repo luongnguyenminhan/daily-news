@@ -41,7 +41,7 @@ export function SearchResultCard({
       <ArticleCard
         article={article}
         saved={saved}
-        description={article.summary?.content ?? article.title}
+        description={article.summary?.content ?? "No AI-generated summary yet."}
         onBookmarkClick={handleBookmarkClick}
       />
       <SaveArticleDialog

@@ -15,6 +15,7 @@ export interface GeminiClientLike {
 
 export interface SummaryRequest {
   articleTitle: string;
+  articleSource: string;
   sourceText: string;
 }
 
@@ -32,7 +33,11 @@ export class GeminiSummaryClient {
   async summarize(request: SummaryRequest): Promise<GeneratedSummary> {
     const response = await this.client.models.generateContent({
       model: this.model,
-      contents: buildSummaryPrompt(request.articleTitle, request.sourceText),
+      contents: buildSummaryPrompt(
+        request.articleTitle,
+        request.articleSource,
+        request.sourceText,
+      ),
       config: {
         responseMimeType: 'application/json',
         responseSchema: SUMMARY_RESPONSE_SCHEMA,

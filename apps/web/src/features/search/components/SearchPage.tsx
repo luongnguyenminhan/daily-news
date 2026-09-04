@@ -13,38 +13,69 @@ import {
   getTotalPages,
   paginate,
 } from "@/lib/article-list";
+import { LAST_SEARCH_HREF_STORAGE_KEY } from "../lib/search-navigation";
 import { SearchResultCard } from "./SearchResultCard";
 import { useSearchArticles } from "../hooks/useSearchArticles";
 
 export function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { articles, loading, message, search } = useSearchArticles();
-  const { saved, save, remove } = useSavedLinks();
   const queryFromUrl = searchParams.get("q")?.trim() ?? "";
+  const isAllSearch = searchParams.get("all") === "1";
+  const hasSearchRequest = Boolean(queryFromUrl) || isAllSearch;
+  const pageFromUrl = Number(searchParams.get("page") ?? "1");
+  const currentPage =
+    Number.isInteger(pageFromUrl) && pageFromUrl > 0 ? pageFromUrl : 1;
+  const { articles, loading, message, search, summarize, isSummarizing } =
+    useSearchArticles({
+      enabled: hasSearchRequest,
+    });
+  const { saved, save, remove } = useSavedLinks();
   const [query, setQuery] = useState(queryFromUrl);
   const [source, setSource] = useState("All");
   const [sort, setSort] = useState<"relevance" | "newest" | "oldest">(
     "relevance",
   );
-  const [currentPage, setCurrentPage] = useState(1);
   const lastSearchedQuery = useRef("");
+  const summarizedArticleIds = useRef(new Set<string>());
 
   useEffect(() => {
     setQuery(queryFromUrl);
-    setCurrentPage(1);
+  }, [queryFromUrl]);
 
+  useEffect(() => {
     if (
       loading ||
-      !queryFromUrl ||
-      lastSearchedQuery.current === queryFromUrl
+      !hasSearchRequest ||
+      lastSearchedQuery.current === (queryFromUrl || "all")
     ) {
       return;
     }
 
-    lastSearchedQuery.current = queryFromUrl;
+    lastSearchedQuery.current = queryFromUrl || "all";
     void search(queryFromUrl);
-  }, [loading, queryFromUrl, search]);
+  }, [hasSearchRequest, loading, queryFromUrl, search]);
+
+  useEffect(() => {
+    if (!hasSearchRequest) {
+      return;
+    }
+
+    const params = new URLSearchParams();
+
+    if (queryFromUrl) {
+      params.set("q", queryFromUrl);
+    }
+
+    if (isAllSearch) {
+      params.set("all", "1");
+    }
+
+    window.sessionStorage.setItem(
+      LAST_SEARCH_HREF_STORAGE_KEY,
+      `/search?${params.toString()}`,
+    );
+  }, [hasSearchRequest, isAllSearch, queryFromUrl]);
 
   const savedIds = useMemo(
     () => new Set(saved.map((item) => item.id)),
@@ -53,26 +84,45 @@ export function SearchPage() {
 
   const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
-    setCurrentPage(1);
   }, []);
 
   const handleSourceChange = useCallback((value: string) => {
     setSource(value);
-    setCurrentPage(1);
   }, []);
 
   const handleSortChange = useCallback(
     (value: "relevance" | "newest" | "oldest") => {
       setSort(value);
-      setCurrentPage(1);
     },
     [],
+  );
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+
+      if (page === 1) {
+        params.delete("page");
+      } else {
+        params.set("page", String(page));
+      }
+
+      router.push(`/search?${params.toString()}`);
+    },
+    [router, searchParams],
   );
 
   const handleSearch = useCallback(() => {
     const term = query.trim();
 
     if (!term) {
+      if (isAllSearch) {
+        lastSearchedQuery.current = "all";
+        void search();
+        return;
+      }
+
+      router.push("/search?all=1");
       return;
     }
 
@@ -83,18 +133,50 @@ export function SearchPage() {
     }
 
     router.push(`/search?q=${encodeURIComponent(term)}`);
-  }, [query, queryFromUrl, router, search]);
+  }, [isAllSearch, query, queryFromUrl, router, search]);
 
   const results = useMemo(() => {
-    if (!queryFromUrl) {
+    if (!hasSearchRequest) {
       return [];
     }
 
-    return filterAndSortArticles(articles, { query, source, sort });
-  }, [articles, query, queryFromUrl, source, sort]);
+    return filterAndSortArticles(articles, {
+      query: queryFromUrl,
+      source,
+      sort,
+    });
+  }, [articles, hasSearchRequest, queryFromUrl, source, sort]);
   const totalPages = getTotalPages(results.length, ARTICLE_PAGE_SIZE);
   const visiblePage = totalPages ? Math.min(currentPage, totalPages) : 1;
   const pageResults = paginate(results, visiblePage, ARTICLE_PAGE_SIZE);
+
+  useEffect(() => {
+    if (isSummarizing) {
+      return;
+    }
+
+    const articleIds = pageResults
+      .filter(
+        (article) =>
+          article.summary?.status !== "DONE" &&
+          !summarizedArticleIds.current.has(article.id),
+      )
+      .map((article) => article.id);
+
+    if (!articleIds.length) {
+      return;
+    }
+
+    articleIds.forEach((articleId) => {
+      summarizedArticleIds.current.add(articleId);
+    });
+
+    void summarize(articleIds).catch(() => {
+      articleIds.forEach((articleId) => {
+        summarizedArticleIds.current.delete(articleId);
+      });
+    });
+  }, [isSummarizing, pageResults, summarize]);
 
   return (
     <section aria-labelledby="search-results-title">
@@ -123,10 +205,12 @@ export function SearchPage() {
         role={loading ? "status" : undefined}
         aria-live="polite"
       >
-        {!queryFromUrl
+        {!hasSearchRequest
           ? "Enter a search term to find the latest results."
           : loading
-            ? "Searching for the latest results..."
+            ? isAllSearch
+              ? "Fetching the latest results from all feeds..."
+              : "Searching for the latest results..."
             : results.length
               ? `About ${results.length} results`
               : "No matching results"}
@@ -152,7 +236,7 @@ export function SearchPage() {
           <Pagination
             currentPage={visiblePage}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
+            onPageChange={handlePageChange}
           />
           <p className="mt-[13px] text-center text-[16px] text-[#bec6d4]">
             {ARTICLE_PAGE_SIZE} results per page
