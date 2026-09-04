@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import type { Article } from "@/domain/article";
+import type { Article, SavedLink } from "@/domain/article";
 import { savedLinksStorage } from "../storage/savedLinksStorage";
+
+const SERVER_SAVED_LINKS: SavedLink[] = [];
 
 export function useSavedLinks() {
   const saved = useSyncExternalStore(
     savedLinksStorage.subscribe,
     savedLinksStorage.read,
-    () => [],
+    () => SERVER_SAVED_LINKS,
   );
 
   const save = useCallback((article: Article, label?: string) => {
