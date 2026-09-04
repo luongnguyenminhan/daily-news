@@ -27,4 +27,12 @@ export class CrawlController {
   list(@Query('topic') topic?: string) {
     return this.crawl.articles(topic);
   }
+
+  @Post('articles/resolve')
+  resolve(@Query('url') url?: string) {
+    const cleaned = url?.trim();
+    if (!cleaned) throw new BadRequestException('url is required');
+
+    return this.crawl.resolveArticle(cleaned);
+  }
 }

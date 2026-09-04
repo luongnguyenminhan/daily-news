@@ -19,6 +19,13 @@ interface GithubRepo {
   pushed_at: string;
 }
 
+interface ResolvedArticle {
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+}
+
 @Injectable()
 export class CrawlService {
   private readonly logger = new Logger(CrawlService.name);
@@ -92,6 +99,96 @@ export class CrawlService {
       orderBy: { publishedAt: 'desc' },
       include: { summary: true },
     });
+  }
+
+  async resolveArticle(url: string): Promise<ResolvedArticle> {
+    let parsedUrl: URL;
+
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      throw new BadGatewayException('A valid URL is required');
+    }
+
+    const hostname = parsedUrl.hostname.replace(/^www\./, '').toLowerCase();
+
+    if (hostname === 'github.com') {
+      return this.resolveGithubArticle(parsedUrl);
+    }
+
+    if (hostname === 'arxiv.org' || hostname === 'export.arxiv.org') {
+      return this.resolveArxivArticle(parsedUrl);
+    }
+
+    return {
+      title: hostname,
+      url: parsedUrl.toString(),
+      source: hostname,
+      publishedAt: new Date().toISOString(),
+    };
+  }
+
+  private async resolveGithubArticle(url: URL): Promise<ResolvedArticle> {
+    const [owner, repository] = url.pathname.split('/').filter(Boolean);
+
+    if (!owner || !repository) {
+      throw new BadGatewayException('A GitHub repository URL is required');
+    }
+
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'daily-news-crawler',
+    };
+    if (process.env.GITHUB_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    }
+
+    const response = await fetch(
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}`,
+      { headers },
+    );
+    if (!response.ok) {
+      throw new BadGatewayException(
+        `GitHub repository lookup failed: ${response.status}`,
+      );
+    }
+
+    const repositoryData = (await response.json()) as GithubRepo;
+
+    return {
+      title: repositoryData.description
+        ? `${repositoryData.full_name} — ${repositoryData.description}`
+        : repositoryData.full_name,
+      url: repositoryData.html_url,
+      source: 'GitHub',
+      publishedAt: repositoryData.pushed_at,
+    };
+  }
+
+  private async resolveArxivArticle(url: URL): Promise<ResolvedArticle> {
+    const identifier = url.pathname
+      .replace(/^\/(?:abs|pdf)\//, '')
+      .replace(/\.pdf$/, '');
+
+    if (!identifier) {
+      throw new BadGatewayException('An arXiv article URL is required');
+    }
+
+    const feed = await parser.parseURL(
+      `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(identifier)}`,
+    );
+    const item = feed.items?.[0];
+
+    if (!item?.title || !item.link) {
+      throw new BadGatewayException('arXiv article lookup failed');
+    }
+
+    return {
+      title: item.title.replace(/\s+/g, ' ').trim(),
+      url: item.link,
+      source: 'arXiv',
+      publishedAt: item.isoDate ?? new Date().toISOString(),
+    };
   }
 
   private async fetchFeed(feed: {

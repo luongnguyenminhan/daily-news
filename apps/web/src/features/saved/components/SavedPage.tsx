@@ -2,10 +2,11 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { ArticleCard } from "@/components/ui/ArticleCard";
+import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { ResultToolbar } from "@/components/ui/ResultToolbar";
 import { SearchField } from "@/components/ui/SearchField";
-import type { SortOrder } from "@/domain/article";
+import type { Article, SortOrder } from "@/domain/article";
 import {
   ARTICLE_PAGE_SIZE,
   ARTICLE_SOURCES,
@@ -14,13 +15,15 @@ import {
   paginate,
 } from "@/lib/article-list";
 import { useSavedLinks } from "../hooks/useSavedLinks";
+import { AddSavedLinkDialog } from "./AddSavedLinkDialog";
 
 export function SavedPage() {
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("All");
   const [sort, setSort] = useState<SortOrder>("relevance");
   const [currentPage, setCurrentPage] = useState(1);
-  const { saved, remove } = useSavedLinks();
+  const [addLinkOpen, setAddLinkOpen] = useState(false);
+  const { saved, save, remove } = useSavedLinks();
 
   const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
@@ -36,6 +39,14 @@ export function SavedPage() {
     setSort(value);
     setCurrentPage(1);
   }, []);
+
+  const handleAddLink = useCallback(
+    (article: Article, label?: string) => {
+      save(article, label);
+      setCurrentPage(1);
+    },
+    [save],
+  );
 
   const results = useMemo(
     () =>
@@ -54,9 +65,19 @@ export function SavedPage() {
 
   return (
     <section>
-      <h1 className="mb-[11px] text-[31px] font-semibold leading-tight tracking-[-.045em] sm:text-[36px]">
-        Saved
-      </h1>
+      <div className="mb-[11px] flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-[31px] font-semibold leading-tight tracking-[-.045em] sm:text-[36px]">
+          Saved
+        </h1>
+        <button
+          type="button"
+          className="inline-flex h-10 w-[140px] items-center justify-center gap-2 rounded-[7px] bg-[#5638e8] px-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#6749f4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8568ff]"
+          onClick={() => setAddLinkOpen(true)}
+        >
+          <Icon name="plus" className="h-[18px] w-[18px]" />
+          Add new
+        </button>
+      </div>
       <SearchField
         value={query}
         onChange={handleQueryChange}
@@ -100,9 +121,14 @@ export function SavedPage() {
         </>
       ) : (
         <p className="text-[17px] text-[#aab6c8]">
-          Save an article from Search to keep it here.
+          Save an article from Search or add a link to keep it here.
         </p>
       )}
+      <AddSavedLinkDialog
+        open={addLinkOpen}
+        onOpenChange={setAddLinkOpen}
+        onSave={handleAddLink}
+      />
     </section>
   );
 }
